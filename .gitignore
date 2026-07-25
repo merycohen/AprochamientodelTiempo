@@ -18,3 +18,10 @@ __pycache__/
 # Datos y Logs
 *.log
 database/data/
+
+# Archivos ejecutables y binarios
+*.exe
+*.dll
+*.so
+*.dylib
+cloudflared/
