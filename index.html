@@ -1,0 +1,267 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Suite Tiempo - Asistente de Configuración Completo</title>
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    <link rel="stylesheet" href="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.css" />
+    <style>
+        body { font-family: 'Segoe UI', sans-serif; margin: 0; display: flex; height: 100vh; background-color: #f7fafc; }
+        
+        /* Contenedor del Asistente Izquierdo */
+        .panel-asistente { width: 35%; padding: 30px; box-sizing: border-box; background: white; box-shadow: 2px 0 10px rgba(0,0,0,0.05); display: flex; flex-direction: column; justify-content: space-between; z-index: 1000; overflow-y: auto; }
+        #mapa { width: 65%; height: 100%; }
+        
+        /* Control de flujo del Wizard (Ocultar/Mostrar Pasos) */
+        .seccion-paso { display: none; }
+        .seccion-paso.activo { display: block; }
+        
+        h2 { color: #1a365d; margin-top: 0; border-bottom: 2px solid #3182ce; padding-bottom: 10px; }
+        .campo { margin-bottom: 16px; }
+        label { display: block; font-weight: 600; margin-bottom: 6px; color: #4a5568; font-size: 14px; }
+        input[type="text"], input[type="email"], select { width: 100%; padding: 10px; border: 1px solid #cbd5e0; border-radius: 6px; box-sizing: border-box; font-size: 14px; }
+        .coordenadas-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 10px; }
+        .slider-valor { font-weight: bold; color: #3182ce; }
+        
+        /* Estilos de Botones */
+        .btn-primario { width: 100%; background-color: #3182ce; color: white; border: none; padding: 14px; font-size: 16px; font-weight: bold; border-radius: 6px; cursor: pointer; transition: background 0.2s; }
+        .btn-primario:hover { background-color: #2b6cb0; }
+        
+        .instruccion { font-size: 13px; color: #718096; background: #ebf8ff; padding: 10px; border-left: 4px solid #3182ce; border-radius: 4px; margin-bottom: 20px; }
+
+        /* --- NUEVOS ESTILOS PASO 3: CARGA MASIVA --- */
+        .zona-drop { border: 2px dashed #cbd5e0; border-radius: 8px; padding: 30px 20px; text-align: center; background: #f7fafc; cursor: pointer; transition: all 0.2s; }
+        .zona-drop:hover, .zona-drop.dragover { border-color: #3182ce; background: #ebf8ff; }
+        .zona-drop p { margin: 0; font-size: 14px; color: #4a5568; }
+        .zona-drop span { display: block; font-size: 11px; color: #a0aec0; margin-top: 5px; }
+        
+        .contenedor-tabla { width: 100%; overflow-x: auto; margin-top: 15px; border: 1px solid #e2e8f0; border-radius: 6px; max-height: 200px; }
+        .tabla-nomina { width: 100%; border-collapse: collapse; text-align: left; font-size: 12px; }
+        .tabla-nomina th { background: #edf2f7; color: #4a5568; padding: 8px; font-weight: 600; border-bottom: 1px solid #e2e8f0; }
+        .tabla-nomina td { padding: 8px; border-bottom: 1px solid #edf2f7; color: #4a5568; }
+    </style>
+</head>
+<body>
+
+    <div class="panel-asistente">
+        
+        <!-- ================= PASO 1: MAPA Y GEOCERCA ================= -->
+        <div id="paso1" class="seccion-paso activo">
+            <h2>Paso 1: Configurar Sede</h2>
+            <p class="instruccion">Haz clic en el mapa de la derecha para capturar las coordenadas de la sede principal.</p>
+            
+            <div class="campo">
+                <label for="nombre_sede">Nombre de la Sede</label>
+                <input type="text" id="nombre_sede" value="Sede Principal Chacao">
+            </div>
+            
+            <div class="campo">
+                <label for="direccion_sede">Dirección Geográfica</label>
+                <input type="text" id="direccion_sede" value="Coordenadas fijadas en mapa">
+            </div>
+            
+            <div class="campo">
+                <label>Coordenadas (PostGIS)</label>
+                <div class="coordenadas-grid">
+                    <div><input type="text" id="latitud" readonly style="background: #edf2f7;"></div>
+                    <div><input type="text" id="longitud" readonly style="background: #edf2f7;"></div>
+                </div>
+            </div>
+            
+            <div class="campo">
+                <label for="radio">Radio de Tolerancia: <span id="radio-txt" class="slider-valor">50</span> metros</label>
+                <input type="range" id="radio" min="30" max="150" value="50" style="width: 100%;">
+            </div>
+            
+            <button type="button" class="btn-primario" id="btn-ir-paso2">Confirmar Sede y Continuar ➔</button>
+        </div>
+
+        <!-- ================= PASO 2: GESTIÓN DE ACCESOS ================= -->
+        <div id="paso2" class="seccion-paso">
+            <h2>Paso 2: Alta de Personal Directivo</h2>
+            <p class="instruccion">Registre los datos del usuario. El sistema enviará un enlace de validación y consentimiento legal directamente a sus canales de contacto antes de activar el acceso.</p>
+            
+            <div class="campo">
+                <label for="nombre_usuario">Nombre Completo</label>
+                <input type="text" id="nombre_usuario" value="Mery Carmen Cohen">
+            </div>
+            
+            <div class="campo">
+                <label for="correo_usuario">Correo Electrónico</label>
+                <input type="email" id="correo_usuario" value="merycarmen@empresa.com">
+            </div>
+            
+            <div class="campo">
+                <label for="telefono_usuario">Teléfono Celular (WhatsApp de Validación)</label>
+                <input type="text" id="telefono_usuario" value="+584121234567">
+            </div>
+            
+            <div class="campo">
+                <label for="rol_usuario">Rol Asignado</label>
+                <select id="rol_usuario">
+                    <option value="Supervisor de Sede">Supervisor de Sede (Restringido a Geocerca)</option>
+                    <option value="Administrador Global">Administrador Global (Acceso Total)</option>
+                </select>
+            </div>
+
+            <br>
+            <button type="button" class="btn-primario" id="btn-ir-paso3">Enviar Invitación y Continuar ✉️</button>
+        </div>
+
+        <!-- ================= PASO 3: CARGA MASIVA DE NÓMINA ================= -->
+        <div id="paso3" class="seccion-paso">
+            <h2>Paso 3: Carga Masiva de Nómina</h2>
+            <p class="instruccion">Suba el listado de trabajadores. El sistema procesará los registros para iniciar el Double Opt-In mediante el agente SOFY en WhatsApp.</p>
+            
+            <div class="campo">
+                <label>Archivo de Nómina</label>
+                <!-- Zona interactiva de arrastre -->
+                <div class="zona-drop" id="dropzone">
+                    <p>📂 Arrastre y suelte su archivo CSV o Excel aquí</p>
+                    <span>o haga clic para explorar sus archivos locales</span>
+                    <input type="file" id="input-archivo" accept=".csv, .xlsx" style="display: none;">
+                </div>
+            </div>
+
+            <!-- Tabla de Previsualización (Oculta hasta que se cargue un archivo) -->
+            <div class="campo" id="bloque-previsualizacion" style="display: none;">
+                <label>Previsualización de Datos Detectados</label>
+                <div class="contenedor-tabla">
+                    <table class="tabla-nomina">
+                        <thead>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>Cargo</th>
+                                <th>Teléfono (WhatsApp)</th>
+                            </tr>
+                        </thead>
+                        <tbody id="tabla-cuerpo">
+                            <!-- Los renglones se generarán dinámicamente -->
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+
+            <br>
+            <button type="button" class="btn-primario" id="btn-finalizar-wizard" disabled>Procesar Nómina y Finalizar Asistente 🚀</button>
+        </div>
+
+    </div>
+
+    <div id="mapa"></div>
+
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script src="https://unpkg.com/leaflet-control-geocoder/dist/Control.Geocoder.js"></script>
+    
+    <script>
+        // --- LÓGICA DEL MAPA (PASO 1) ---
+        const mapa = L.map('mapa').setView([10.4910, -66.8536], 14);
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', { maxZoom: 19, attribution: '© OpenStreetMap' }).addTo(mapa);
+        let marcador = null; let geocercaCirculo = null;
+
+        mapa.on('click', function(e) {
+            const lat = e.latlng.lat; const lng = e.latlng.lng;
+            document.getElementById('latitud').value = lat.toFixed(6);
+            document.getElementById('longitud').value = lng.toFixed(6);
+
+            if (marcador) { mapa.removeLayer(marcador); }
+            if (geocercaCirculo) { mapa.removeLayer(geocercaCirculo); }
+
+            marcador = L.marker([lat, lng], { draggable: true }).addTo(mapa);
+            const radioActual = document.getElementById('radio').value;
+            geocercaCirculo = L.circle([lat, lng], { color: '#3182ce', fillColor: '#3182ce', fillOpacity: 0.2, radius: parseInt(radioActual) }).addTo(mapa);
+            
+            marcador.on('dragend', function(evt) {
+                const pos = marcador.getLatLng();
+                document.getElementById('latitud').value = pos.lat.toFixed(6);
+                document.getElementById('longitud').value = pos.lng.toFixed(6);
+                geocercaCirculo.setLatLng(pos);
+            });
+        });
+
+        document.getElementById('radio').addEventListener('input', function(e) {
+            document.getElementById('radio-txt').innerText = e.target.value;
+            if (geocercaCirculo) geocercaCirculo.setRadius(parseInt(e.target.value));
+        });
+
+        // --- NAVEGACIÓN DEL WIZARD ---
+        document.getElementById('btn-ir-paso2').addEventListener('click', function() {
+            if (!document.getElementById('latitud').value) {
+                alert("Por favor, marca primero la ubicación de la sede en el mapa.");
+                return;
+            }
+            document.getElementById('paso1').classList.remove('activo');
+            document.getElementById('paso2').classList.add('activo');
+        });
+
+        document.getElementById('btn-ir-paso3').addEventListener('click', function() {
+            if (!document.getElementById('nombre_usuario').value || !document.getElementById('correo_usuario').value) {
+                alert("Por favor, rellene los datos obligatorios del directivo.");
+                return;
+            }
+            document.getElementById('paso2').classList.remove('activo');
+            document.getElementById('paso3').classList.add('activo');
+        });
+
+        // --- LÓGICA PASO 3: INTERACCIÓN DE CARGA MASIVA ---
+        const dropzone = document.getElementById('dropzone');
+        const inputArchivo = document.getElementById('input-archivo');
+        const bloquePrevisualizacion = document.getElementById('bloque-previsualizacion');
+        const tablaCuerpo = document.getElementById('tabla-cuerpo');
+        const btnFinalizar = document.getElementById('btn-finalizar-wizard');
+
+        // Hacer clic en la zona abre el buscador de archivos del sistema
+        dropzone.addEventListener('click', () => inputArchivo.click());
+
+        // Efectos visuales al arrastrar archivos encima
+        dropzone.addEventListener('dragover', (e) => { e.preventDefault(); dropzone.classList.add('dragover'); });
+        dropzone.addEventListener('dragleave', () => dropzone.classList.remove('dragover'));
+        
+        dropzone.addEventListener('drop', (e) => {
+            e.preventDefault();
+            dropzone.classList.remove('dragover');
+            if (e.dataTransfer.files.length > 0) {
+                procesarArchivoSimulado(e.dataTransfer.files[0]);
+            }
+        });
+
+        inputArchivo.addEventListener('change', (e) => {
+            if (e.target.files.length > 0) {
+                procesarArchivoSimulado(e.target.files[0]);
+            }
+        });
+
+        // Simulación de lectura de datos para el MVP en Frontend
+        function procesarArchivoSimulado(archivo) {
+            dropzone.innerHTML = `<p>✅ <strong>${archivo.name}</strong> cargado exitosamente</p><span>Tamaño: ${(archivo.size/1024).toFixed(1)} KB</span>`;
+            
+            // Datos quemados estructurados para la previsualización del MVP
+            const datosMock = [
+                { nombre: "Carlos Mendoza", cargo: "Analista IT", telefono: "+584149991122" },
+                { nombre: "Elena Rodriguez", cargo: "Coordinadora de Operaciones", telefono: "+584163334455" },
+                { nombre: "Ricardo Gomez", cargo: "Especialista de Soporte", telefono: "+584245556677" }
+            ];
+
+            // Limpiamos la tabla vieja
+            tablaCuerpo.innerHTML = "";
+
+            // Insertamos las filas dinámicamente
+            datosMock.forEach(empleado => {
+                const fila = document.createElement('tr');
+                fila.innerHTML = `<td>${empleado.nombre}</td><td>${empleado.cargo}</td><td>${empleado.telefono}</td>`;
+                tablaCuerpo.appendChild(fila);
+            });
+
+            // Mostramos el panel de la tabla y habilitamos el botón final
+            bloquePrevisualizacion.style.display = "block";
+            btnFinalizar.disabled = false;
+        }
+
+        // Evento final del flujo del Asistente
+        btnFinalizar.addEventListener('click', function() {
+            alert("¡Felicidades! Todo el Frontend del Asistente ha sido validado.\n\nEl sistema capturó:\n1. Geocerca de Sede\n2. Datos de Invitación Directiva\n3. Lista de Nómina para Carga Masiva\n\nPasos del asistente completados.");
+        });
+    </script>
+</body>
+</html>
