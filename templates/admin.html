@@ -1,0 +1,139 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Aprovechamiento del Tiempo | Panel de Administración</title>
+    
+    <!-- Hojas de Estilo CSS de Leaflet (Mapas Gratis / OpenSource) -->
+    <link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css" />
+    
+    <style>
+        * { box-sizing: border-box; font-family: 'Segoe UI', system-ui, sans-serif; }
+        body { margin: 0; padding: 20px; background-color: #f8fafc; color: #1e293b; }
+        
+        .header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
+        .header h1 { margin: 0; font-size: 1.5rem; color: #0f172a; }
+        
+        /* Tarjetas de Métricas (KPIs) */
+        .kpi-grid { display: grid; grid-template-columns: repeat(auto-fit, minmax(200px, 1fr)); gap: 15px; margin-bottom: 20px; }
+        .card { background: white; padding: 18px; border-radius: 10px; border: 1px solid #e2e8f0; box-shadow: 0 1px 3px rgba(0,0,0,0.05); }
+        .card-title { font-size: 0.85rem; color: #64748b; font-weight: 600; text-transform: uppercase; }
+        .card-value { font-size: 1.8rem; font-weight: bold; margin-top: 5px; color: #0f172a; }
+
+        /* Contenedor del Mapa */
+        .map-card { background: white; padding: 15px; border-radius: 10px; border: 1px solid #e2e8f0; }
+        #map { height: 480px; width: 100%; border-radius: 8px; }
+    </style>
+</head>
+<body>
+
+    <div class="header">
+        <h1>📊 Dashboard de Control de Asistencias</h1>
+        <button onclick="cargarMarcajesMapa()" style="padding: 8px 16px; background: #2563eb; color: white; border: none; border-radius: 6px; cursor: pointer;">
+            🔄 Actualizar
+        </button>
+    </div>
+
+    <!-- KPIs Rápidos -->
+    <div class="kpi-grid">
+        <div class="card">
+            <div class="card-title">Marcajes Hoy</div>
+            <div class="card-value" id="total-marcajes">0</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Dentro de Geocerca</div>
+            <div class="card-value" style="color: #16a34a;" id="total-dentro">0</div>
+        </div>
+        <div class="card">
+            <div class="card-title">Fuera de Perímetro</div>
+            <div class="card-value" style="color: #dc2626;" id="total-fuera">0</div>
+        </div>
+    </div>
+
+    <!-- Mapa Interactivo PostGIS -->
+    <div class="map-card">
+        <h3 style="margin-top: 0; font-size: 1.1rem;">🗺️ Monitoreo de Geocercas en Tiempo Real</h3>
+        <div id="map"></div>
+    </div>
+
+    <!-- Script de Leaflet JS -->
+    <script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+    <script>
+        // Coordenadas base (Ajustadas a Caracas/Venezuela por defecto)
+        const map = L.map('map').setView([10.4806, -66.9036], 12);
+
+        // Capa de Mapa Gratuita (OpenStreetMap)
+        L.tileLayer('https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png', {
+            maxZoom: 19,
+            attribution: '© OpenStreetMap'
+        }).addTo(map);
+
+        let capaSedes = L.layerGroup().addTo(map);
+        let capaMarcajes = L.layerGroup().addTo(map);
+
+        async function cargarMarcajesMapa() {
+            try {
+                const res = await fetch('/admin/api/marcajes-hoy');
+                const marcajes = await res.json();
+
+                // Limpiar marcadores viejos
+                capaSedes.clearLayers();
+                capaMarcajes.clearLayers();
+
+                let dentroCount = 0;
+                let fueraCount = 0;
+                let sedesDibujadas = new Set();
+
+                marcajes.forEach(m => {
+                    // 1. Dibujar el círculo de la Geocerca de la Sede
+                    if (!sedesDibujadas.has(m.sede_nombre)) {
+                        L.circle([m.sede_latitud, m.sede_longitud], {
+                            color: '#2563eb',
+                            fillColor: '#60a5fa',
+                            fillOpacity: 0.15,
+                            radius: m.radio_metros
+                        }).addTo(capaSedes).bindPopup(`<b>🏢 Sede:</b> ${m.sede_nombre}<br><b>Radio:</b> ${m.radio_metros}m`);
+                        
+                        sedesDibujadas.add(m.sede_nombre);
+                    }
+
+                    // 2. Contadores
+                    if (m.dentro_geocerca) dentroCount++;
+                    else fueraCount++;
+
+                    // 3. Crear Punto de Marcaje del Empleado (Verde = Dentro, Rojo = Fuera)
+                    const colorPunto = m.dentro_geocerca ? '#16a34a' : '#dc2626';
+                    
+                    const marker = L.circleMarker([m.latitud, m.longitud], {
+                        color: colorPunto,
+                        fillColor: colorPunto,
+                        fillOpacity: 0.85,
+                        radius: 8
+                    }).addTo(capaMarcajes);
+
+                    marker.bindPopup(`
+                        <div style="font-size:0.9rem">
+                            <b>👤 Empleado:</b> ${m.empleado_nombre}<br>
+                            <b>📍 Accion:</b> ${m.tipo_registro}<br>
+                            <b>🏢 Sede:</b> ${m.sede_nombre}<br>
+                            <b>Estatus:</b> ${m.dentro_geocerca ? '🟢 Dentro de Rango' : '🔴 Fuera de Perímetro'}
+                        </div>
+                    `);
+                });
+
+                // Actualizar KPIs
+                document.getElementById('total-marcajes').innerText = marcajes.length;
+                document.getElementById('total-dentro').innerText = dentroCount;
+                document.getElementById('total-fuera').innerText = fueraCount;
+
+            } catch (err) {
+                console.error("Error al obtener marcajes para el mapa:", err);
+            }
+        }
+
+        // Cargar marcajes al abrir la página
+        cargarMarcajesMapa();
+    </script>
+</body>
+</html>

@@ -116,6 +116,7 @@ class EmpleadoItem(BaseModel):
     telefono: str = Field(..., example="+584149876543")
     sede_asignada: str = Field(..., example="Sede Principal Chacao")
     autoriza_uso_datos: bool = Field(..., example=True) # Checkbox individual de privacidad
+    
 
 # 3.2 Creamos la ruta para la carga masiva (recibe una lista de empleados)
 @app.post("/api/empleados/cargar", status_code=status.HTTP_201_CREATED)
